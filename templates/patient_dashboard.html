@@ -1,0 +1,112 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container my-5">
+    <h2 class="text-center mb-4">Patient Dashboard</h2>
+
+    <div class="row">
+        <!-- Health Indicators Form -->
+        <div class="col-md-6">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h4>Enter Health Indicators</h4>
+                </div>
+                <div class="card-body">
+                    <form id="healthForm">
+                        <label for="age">Age:</label>
+                        <input type="number" id="age" required>
+                        <label for="bmi">BMI:</label>
+                        <input type="number" id="bmi" required>
+                        <label for="blood_pressure">Blood Pressure:</label>
+                        <input type="number" id="blood_pressure" required>
+                        <label for="cholesterol">Cholesterol Level:</label>
+                        <input type="number" id="cholesterol" required>
+                        <button type="submit">Send</button>
+                    </form>
+            
+                </div>
+            </div>
+        </div>
+
+        <!-- Messages Section -->
+        <div class="col-md-6">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-info text-white">
+                    <h4>Your Health Messages</h4>
+                </div>
+                <div class="card-body">
+                    <h5>Messages from Doctors</h5>
+                    <ul class="list-group" id="message-list">
+                        {% for message in messages %}
+                            <li class="list-group-item" id="message-{{ message.id }}">
+                                <strong>From:</strong> {{ message.sender.username }}<br>
+                                <strong>Message:</strong> {{ message.content }}<br>
+
+                                <!-- Replies Section -->
+                                <strong>Replies:</strong>
+                                <ul id="replies-{{ message.id }}">
+                                    {% for reply in message.replies %}
+                                        <li>
+                                            <strong>{{ reply.sender.username }}:</strong> {{ reply.content }} - 
+                                            <small>{{ reply.timestamp }}</small>
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+
+                                <!-- Reply Form -->
+                                <form class="reply-form mt-2" data-message-id="{{ message.id }}">
+                                    <textarea class="form-control mb-2" name="reply_content" placeholder="Type your reply here..." required></textarea>
+                                    <button type="submit" class="btn btn-secondary btn-sm">Reply</button>
+                                </form>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Function to handle reply submission via AJAX
+document.querySelectorAll('.reply-form').forEach(function(form) {
+    form.addEventListener('submit', function(event) {
+        event.preventDefault();
+
+        const messageId = this.getAttribute('data-message-id');
+        const replyContent = this.querySelector('textarea').value;
+
+        // Perform AJAX request
+        const formData = new FormData();
+        formData.append('reply_content', replyContent);
+        formData.append('message_id', messageId);
+
+        fetch('{{ url_for("reply_to_message") }}', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // If the reply was successful, dynamically add the reply to the UI
+                const repliesList = document.querySelector('#replies-' + messageId);
+                const newReply = document.createElement('li');
+                newReply.innerHTML = `<strong>Patient:</strong> ${replyContent} - <small>Just now</small>`;
+                repliesList.appendChild(newReply);
+
+                // Clear the textarea
+                this.querySelector('textarea').value = '';
+            } else {
+                alert('Failed to send reply.');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error submitting reply.');
+        });
+    });
+});
+</script>
+{% endblock %}

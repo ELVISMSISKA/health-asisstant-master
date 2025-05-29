@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Your Notifications</h1>
+        <button class="btn btn-outline-danger" id="clearNotifications">Clear All</button>
+    </div>
+    
+    {% if notifications %}
+    <div class="list-group">
+        {% for notification in notifications %}
+        <div class="list-group-item {% if not notification.is_read %}list-group-item-primary{% endif %}">
+            <div class="d-flex w-100 justify-content-between">
+                <h5 class="mb-1">
+                    {% if notification.notification_type == 'message' %}
+                    <i class="fas fa-envelope text-primary"></i>
+                    {% elif notification.notification_type == 'health_update' %}
+                    <i class="fas fa-heartbeat text-danger"></i>
+                    {% else %}
+                    <i class="fas fa-bell text-warning"></i>
+                    {% endif %}
+                    {{ notification.message }}
+                </h5>
+                <small>{{ notification.timestamp.strftime('%Y-%m-%d %H:%M') }}</small>
+            </div>
+            <div class="d-flex justify-content-end mt-2">
+                <button class="btn btn-sm btn-outline-danger delete-notification" 
+                        data-notification-id="{{ notification.id }}">
+                    <i class="fas fa-trash"></i> Delete
+                </button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        You have no notifications.
+    </div>
+    {% endif %}
+</div>
+
+<script>
+    // Delete single notification
+    document.querySelectorAll('.delete-notification').forEach(button => {
+        button.addEventListener('click', function() {
+            const notificationId = this.getAttribute('data-notification-id');
+            fetch(`/delete_notification/${notificationId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    this.closest('.list-group-item').remove();
+                }
+            });
+        });
+    });
+
+    // Clear all notifications
+    document.getElementById('clearNotifications').addEventListener('click', function() {
+        if (confirm('Are you sure you want to clear all notifications?')) {
+            fetch('/clear_notifications', {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    window.location.reload();
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,305 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row">
+        <h1>Doctor's Dashboard</h1>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Age</th>
+                    <th>BMI</th>
+                    <th>Blood Pressure</th>
+                    <th>Cholesterol</th>
+                    <th>Prediction Result</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for prediction in predictions %}
+                <tr>
+                    <td>{{ prediction.age }}</td>
+                    <td>{{ prediction.bmi }}</td>
+                    <td>{{ prediction.blood_pressure }}</td>
+                    <td>{{ prediction.cholesterol }}</td>
+                    <td>{{ prediction.result }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="row mt-4">
+        <!-- Monitor Patients Section (Left) -->
+        <div class="col-md-4">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h4>Monitor Patients</h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('send_health_alert') }}">
+                        <div class="mb-3">
+                            <label for="patient_id" class="form-label">Select Patient:</label>
+                            {% if patients %}
+                                <select class="form-select" name="patient_id" required>
+                                    {% for user, health_data in patients %}
+                                        <option value="{{ user.id }}">
+                                            {{ user.username }} (Age: {{ health_data.age if health_data.age else 'N/A' }})
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            {% else %}
+                                <div class="alert alert-warning">No patients found in database</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="health_data" class="form-label">Enter Health Data:</label>
+                            <input type="text" class="form-control" name="health_data" placeholder="e.g., 120 mg/dL" required>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100">Send Alert</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Debug Information Card -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-warning text-dark">
+                    <h5>Debug Information</h5>
+                </div>
+                <div class="card-body">
+                    <h6>Patients Data ({{ patients|length }} found):</h6>
+                    {% if patients %}
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Username</th>
+                                        <th>Health Data</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for user, health_data in patients %}
+                                    <tr>
+                                        <td>{{ user.id }}</td>
+                                        <td>{{ user.username }}</td>
+                                        <td>
+                                            {% if health_data %}
+                                                ID: {{ health_data.id }}<br>
+                                                BP: {{ health_data.blood_pressure }}<br>
+                                                Sugar: {{ health_data.sugar }}
+                                            {% else %}
+                                                No health data
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-danger">No patients found with health data!</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Send Message Section (Middle) -->
+        <div class="col-md-4">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-success text-white">
+                    <h4>Send Message</h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('send_message') }}">
+                        <div class="mb-3">
+                            <label for="patient_id" class="form-label">Select Patient:</label>
+                            {% if patients %}
+                                <select class="form-select" name="patient_id" required>
+                                    {% for user, health_data in patients %}
+                                        <option value="{{ user.id }}">{{ user.username }}</option>
+                                    {% endfor %}
+                                </select>
+                            {% else %}
+                                <div class="alert alert-warning">No patients available</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="message" class="form-label">Message:</label>
+                            <textarea class="form-control" name="message" rows="4" placeholder="Type your message here..." required></textarea>
+                        </div>
+
+                        <button type="submit" class="btn btn-success w-100">Send Message</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Display Sent Messages -->
+        <div class="col-md-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <h4>Your Messages</h4>
+                </div>
+                <div class="card-body">
+                    {% if sent_messages %}
+                        <ul class="list-group">
+                            {% for message in sent_messages %}
+                                <li class="list-group-item" id="message-{{ message.id }}">
+                                    <strong>To:</strong> {{ message.receiver.username }} <br>
+                                    <strong>Message:</strong> {{ message.content }} <br>
+                                    <strong>Time:</strong> {{ message.timestamp.strftime('%Y-%m-%d %H:%M') }}
+
+                                    <button type="button" class="btn btn-danger btn-sm float-end delete-message" data-id="{{ message.id }}">
+                                        Delete
+                                    </button>
+
+                                    {% if message.replies %}
+                                        <div class="mt-2">
+                                            <strong>Replies:</strong>
+                                            <ul class="list-group mt-2">
+                                                {% for reply in message.replies %}
+                                                    <li class="list-group-item small">
+                                                        <strong>{{ reply.sender.username }}:</strong> {{ reply.content }}<br>
+                                                        <small>{{ reply.timestamp.strftime('%Y-%m-%d %H:%M') }}</small>
+                                                    </li>
+                                                {% endfor %}
+                                            </ul>
+                                        </div>
+                                    {% endif %}
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-muted">No messages sent yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Disease Simulation Section -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-secondary text-white">
+                    <h4>Disease Progression Simulation</h4>
+                </div>
+                <div class="card-body">
+                    <form id="simulationForm" class="row g-3">
+                        <div class="col-md-2">
+                            <label for="age" class="form-label">Age:</label>
+                            <input type="number" class="form-control" id="age" required>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="initial_infected" class="form-label">Initial Infected:</label>
+                            <input type="number" class="form-control" id="initial_infected" required>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="contact_rate" class="form-label">Contact Rate (β):</label>
+                            <input type="number" step="0.01" class="form-control" id="contact_rate" required>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="recovery_rate" class="form-label">Recovery Rate (γ):</label>
+                            <input type="number" step="0.01" class="form-control" id="recovery_rate" required>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="disease_duration" class="form-label">Duration (days):</label>
+                            <input type="number" class="form-control" id="disease_duration" required>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary w-100">Simulate</button>
+                        </div>
+                    </form>
+
+                    <div id="simulationResult" class="mt-4">
+                        <div class="chart-container" style="position: relative; height:400px; width:100%">
+                            <canvas id="chart"></canvas>
+                        </div>
+                        <div id="description" class="mt-3 p-3 bg-light rounded"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Message deletion
+        document.querySelectorAll('.delete-message').forEach(button => {
+            button.addEventListener('click', function() {
+                const messageId = this.getAttribute('data-id');
+                const messageElement = document.getElementById('message-' + messageId);
+
+                fetch('/delete-message', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ id: messageId })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        messageElement.remove();
+                    } else {
+                        alert('Error: ' + (data.error || 'Failed to delete message'));
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred while deleting the message.');
+                });
+            });
+        });
+
+        // Disease simulation form
+        const simulationForm = document.getElementById('simulationForm');
+        if (simulationForm) {
+            simulationForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+
+                const formData = {
+                    age: document.getElementById('age').value,
+                    initial_infected: document.getElementById('initial_infected').value,
+                    contact_rate: document.getElementById('contact_rate').value,
+                    recovery_rate: document.getElementById('recovery_rate').value,
+                    disease_duration: document.getElementById('disease_duration').value
+                };
+
+                fetch('/simulate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert('Error: ' + data.error);
+                        return;
+                    }
+
+                    // Process and display simulation results
+                    displaySimulationResults(data);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred during simulation.');
+                });
+            });
+        }
+
+        function displaySimulationResults(data) {
+            // Implement your chart rendering logic here
+            console.log('Simulation results:', data);
+            document.getElementById('description').innerHTML = data.description;
+        }
+    });
+</script>
+{% endblock %}
